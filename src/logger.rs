@@ -1,4 +1,4 @@
-use crate::formatter::Formatter;
+use crate::formatter::{Formatter, JsonFormatter};
 use crate::level::LogLevel;
 use crate::looper::AsyncLooper;
 use crate::message::LogMessage;
@@ -26,8 +26,23 @@ pub trait LoggerTrait: Send + Sync {
 struct LoggerInner {
     name: String,
     level: Mutex<LogLevel>,
-    formatter: Formatter,
+    formatter: LogFormatter,
     sinks: Vec<Arc<dyn LogSink>>,
+}
+
+#[derive(Clone)]
+pub(crate) enum LogFormatter {
+    Pattern(Formatter),
+    Json(JsonFormatter),
+}
+
+impl LogFormatter {
+    fn format(&self, msg: &LogMessage) -> String {
+        match self {
+            LogFormatter::Pattern(formatter) => formatter.format(msg),
+            LogFormatter::Json(formatter) => formatter.format(msg),
+        }
+    }
 }
 
 /// 同步日志器
@@ -37,13 +52,13 @@ pub struct SyncLogger {
 
 impl SyncLogger {
     /// 创建新的同步日志器
-    pub fn new(
+    pub(crate) fn new(
         name: String,
-        formatter: Option<Formatter>,
+        formatter: Option<LogFormatter>,
         sinks: Vec<Arc<dyn LogSink>>,
         level: LogLevel,
     ) -> Self {
-        let formatter = formatter.unwrap_or_default();
+        let formatter = formatter.unwrap_or_else(|| LogFormatter::Pattern(Formatter::default()));
 
         SyncLogger {
             inner: LoggerInner {
@@ -58,8 +73,9 @@ impl SyncLogger {
     // 执行日志写入
     fn log_it(&self, msg: &LogMessage) {
         let formatted = self.inner.formatter.format(msg);
+        crate::recent::record(msg, formatted.clone());
         for sink in &self.inner.sinks {
-            sink.log(formatted.as_bytes());
+            sink.log_message(msg, &formatted);
         }
     }
 }
@@ -101,21 +117,24 @@ pub struct AsyncLogger {
 
 impl AsyncLogger {
     /// 创建新的异步日志器
-    pub fn new(
+    pub(crate) fn new(
         name: String,
-        formatter: Option<Formatter>,
+        formatter: Option<LogFormatter>,
         sinks: Vec<Arc<dyn LogSink>>,
         level: LogLevel,
     ) -> Self {
-        let formatter = formatter.unwrap_or_default();
+        let formatter = formatter.unwrap_or_else(|| LogFormatter::Pattern(Formatter::default()));
 
-        // 创建共享的 sinks 用于回调
-        let sinks_clone = sinks.clone();
+        let batch_sinks: Vec<_> = sinks
+            .iter()
+            .filter(|sink| sink.accepts_batch())
+            .cloned()
+            .collect();
 
         let looper = AsyncLooper::new(move |buf| {
             let data = buf.to_string();
             if !data.is_empty() {
-                for sink in &sinks_clone {
+                for sink in &batch_sinks {
                     sink.log(data.as_bytes());
                 }
             }
@@ -135,6 +154,10 @@ impl AsyncLogger {
     // 执行日志写入（推送到异步队列）
     fn log_it(&self, msg: &LogMessage) {
         let formatted = self.inner.formatter.format(msg);
+        crate::recent::record(msg, formatted.clone());
+        for sink in self.inner.sinks.iter().filter(|sink| !sink.accepts_batch()) {
+            sink.log_message(msg, &formatted);
+        }
         self.looper.push(&formatted);
     }
 }
@@ -241,7 +264,7 @@ pub struct LoggerBuilder {
     name: Option<String>,
     level: LogLevel,
     logger_type: LoggerType,
-    formatter: Option<Formatter>,
+    formatter: Option<LogFormatter>,
     sinks: Vec<Arc<dyn LogSink>>,
 }
 
@@ -283,7 +306,12 @@ impl LoggerBuilder {
 
     /// 设置格式化器
     pub fn formatter(mut self, formatter: Formatter) -> Self {
-        self.formatter = Some(formatter);
+        self.formatter = Some(LogFormatter::Pattern(formatter));
+        self
+    }
+
+    pub fn json_formatter(mut self) -> Self {
+        self.formatter = Some(LogFormatter::Json(JsonFormatter::new()));
         self
     }
 
@@ -355,6 +383,14 @@ impl LoggerManager {
         self.loggers.lock().get(name).cloned()
     }
 
+    fn logger_levels(&self) -> Vec<(String, LogLevel)> {
+        self.loggers
+            .lock()
+            .iter()
+            .map(|(name, logger)| (name.clone(), logger.level()))
+            .collect()
+    }
+
     fn root_logger(&self) -> Logger {
         self.root_logger.clone()
     }
@@ -376,6 +412,19 @@ pub fn create_logger(builder: LoggerBuilder) -> Logger {
     let name = logger.name().to_string();
     LoggerManager::instance().add_logger(&name, logger.clone());
     logger
+}
+
+pub fn set_logger_level(name: &str, level: LogLevel) -> bool {
+    if let Some(logger) = get_logger(name) {
+        logger.set_level(level);
+        true
+    } else {
+        false
+    }
+}
+
+pub fn logger_levels() -> Vec<(String, LogLevel)> {
+    LoggerManager::instance().logger_levels()
 }
 
 // ============================================================================

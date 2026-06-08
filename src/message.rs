@@ -1,34 +1,30 @@
+use crate::level::LogLevel;
+use serde::Serialize;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use crate::level::LogLevel;
 
 /// 日志消息结构体，包含所有日志元数据
+#[derive(Clone, Serialize)]
 pub struct LogMessage {
-    pub name: String,      // 日志器名称
-    pub file: String,      // 源文件
-    pub line: u32,         // 源文件行号
-    pub payload: String,   // 日志内容
-    pub level: LogLevel,   // 日志级别
-    pub timestamp: u64,    // Unix 时间戳
-    pub thread_id: u64,    // 线程 ID
+    pub name: String,    // 日志器名称
+    pub file: String,    // 源文件
+    pub line: u32,       // 源文件行号
+    pub payload: String, // 日志内容
+    pub level: LogLevel, // 日志级别
+    pub timestamp: u64,  // Unix 时间戳
+    pub thread_id: u64,  // 线程 ID
 }
 
 impl LogMessage {
     /// 创建新的日志消息
-    pub fn new(
-        name: String,
-        file: String,
-        line: u32,
-        payload: String,
-        level: LogLevel,
-    ) -> Self {
+    pub fn new(name: String, file: String, line: u32, payload: String, level: LogLevel) -> Self {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         // 使用稳定方法获取线程 ID 并转换为 u64
         let id = thread::current().id();
         let mut hasher = DefaultHasher::new();

@@ -82,6 +82,7 @@ impl AsyncLooper {
         }
 
         self.tasks_push.push_str(msg);
+        crate::runtime::RUNTIME_STATS.record_async_push(msg.len());
         self.pop_cond.notify_all();
     }
 
@@ -131,7 +132,9 @@ impl AsyncLooper {
             // 处理弹出的数据
             tasks_pop.with_lock(|buf| {
                 if !buf.is_empty() {
+                    let bytes = buf.readable_size();
                     callback(buf);
+                    crate::runtime::RUNTIME_STATS.record_async_batch(bytes);
                 }
                 buf.reset();
             });
@@ -142,6 +145,10 @@ impl AsyncLooper {
 impl Drop for AsyncLooper {
     fn drop(&mut self) {
         self.stop();
+
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
     }
 }
 

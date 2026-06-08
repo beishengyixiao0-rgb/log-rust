@@ -1,6 +1,6 @@
 //! 基本使用示例 - 演示简单的日志宏
 
-use bitlog::{debug, info, warn, error};
+use bitlog::{debug, error, info, warn};
 
 fn main() {
     println!("=== BitLog 基本示例 ===\n");

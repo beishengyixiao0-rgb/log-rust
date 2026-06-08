@@ -31,14 +31,23 @@ pub mod message;
 pub mod sink;
 
 // 公开主要类型
-pub use formatter::Formatter;
+pub use formatter::{Formatter, JsonFormatter};
 pub use level::LogLevel;
-pub use logger::{create_logger, get_logger, root_logger, Logger, LoggerBuilder, LoggerType};
-pub use sink::{FileSink, LogSink, RollSink, SinkFactory, StdoutSink};
+pub use logger::{
+    create_logger, get_logger, logger_levels, root_logger, set_logger_level, Logger, LoggerBuilder,
+    LoggerType,
+};
+pub use sink::{
+    CleanupPolicy, FileSink, LogSink, MysqlSink, RollSink, RollingPolicy, SinkFactory, StdoutSink,
+    TimeRollingPolicy,
+};
 
 pub mod compressor;
+pub mod config;
 pub mod dashboard;
 pub mod panic_hook;
+pub mod recent;
+pub mod runtime;
 pub mod stats;
 pub mod tui;
 

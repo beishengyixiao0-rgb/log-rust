@@ -17,6 +17,8 @@ axum = "0.7"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+mysql = "25"
+toml = "0.8"
 
 ratatui = "0.26"
 crossterm = "0.27"
@@ -33,3 +35,11 @@ path = "examples/async_demo.rs"
 [[example]]
 name = "file_sink"
 path = "examples/file_sink.rs"
+
+[[example]]
+name = "dashboard_demo"
+path = "examples/dashboard_demo.rs"
+
+[[example]]
+name = "mysql_demo"
+path = "examples/mysql_demo.rs"

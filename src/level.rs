@@ -1,5 +1,5 @@
 /// 日志级别，与 C++ 原版保持一致
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 pub enum LogLevel {
     Unknown = 0,
     Debug,

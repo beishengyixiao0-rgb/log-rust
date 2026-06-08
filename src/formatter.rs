@@ -1,5 +1,6 @@
 use crate::message::LogMessage;
 use chrono::{Local, TimeZone};
+use serde_json::json;
 use std::fmt::Write;
 use std::sync::Arc;
 
@@ -225,6 +226,29 @@ impl Formatter {
                 text: format!("%{}", spec),
             }),
         }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct JsonFormatter;
+
+impl JsonFormatter {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn format(&self, msg: &LogMessage) -> String {
+        json!({
+            "logger_name": msg.name,
+            "level": msg.level.as_str(),
+            "message": msg.payload,
+            "file": msg.file,
+            "line": msg.line,
+            "thread_id": msg.thread_id,
+            "timestamp": msg.timestamp,
+        })
+        .to_string()
+            + "\n"
     }
 }
 

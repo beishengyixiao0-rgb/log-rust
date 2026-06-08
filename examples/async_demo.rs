@@ -1,7 +1,7 @@
 //! 异步日志器演示
 
-use bitlog::{LoggerBuilder, LoggerType, LogLevel, Formatter, LOG_INFO, LOG_DEBUG};
 use bitlog::sink::SinkFactory;
+use bitlog::{Formatter, LogLevel, LoggerBuilder, LoggerType, LOG_DEBUG, LOG_INFO};
 use std::thread;
 use std::time::Duration;
 
@@ -14,7 +14,7 @@ fn main() {
         .level(LogLevel::Debug)
         .logger_type(LoggerType::Async)
         .formatter(Formatter::new(Some(
-            "[%d{%Y-%m-%d %H:%M:%S}][%t][%p][%c] %m%n".to_string()
+            "[%d{%Y-%m-%d %H:%M:%S}][%t][%p][%c] %m%n".to_string(),
         )))
         .sink(SinkFactory::stdout())
         .build();
