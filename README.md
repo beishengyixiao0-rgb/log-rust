@@ -36,6 +36,9 @@ bitlog-rust/
     ├── basic.rs            # 基本使用示例
     ├── async_demo.rs       # 异步日志示例
     ├── file_sink.rs        # 文件和滚动文件示例
+    ├── rolling_demo.rs     # 按大小、小时、日期滚动示例
+    ├── panic_stats_demo.rs # panic hook 和统计输出示例
+    ├── tui_demo.rs         # 终端 TUI 示例
     ├── dashboard_demo.rs   # Dashboard + MySQL 示例
     └── mysql_demo.rs       # MySQL 写入验证示例
 └── tests/
@@ -553,22 +556,127 @@ fn main() {
 
 ## 运行示例
 
+下面这些示例覆盖 BitLog 的主要功能。普通示例不依赖 MySQL；只有 `mysql_demo` 和 Dashboard 的 MySQL 历史查询需要本地 MySQL 服务。
+
+### 基本用法、宏和级别输出
+
 ```bash
-# 基本用法
 cargo run --example basic
+```
 
-# 异步日志
+这个示例展示根日志器、`debug!` / `info!` / `warn!` / `error!` 宏，以及带参数的格式化日志。
+
+### 异步日志和多线程写入
+
+```bash
 cargo run --example async_demo
+```
 
-# 文件输出和滚动文件
+这个示例创建 `LoggerType::Async` 日志器，并从多个线程写入日志。后台线程会批量把日志写到 sink。
+
+### 文件输出和按大小滚动
+
+```bash
 cargo run --example file_sink
+```
 
-# Dashboard 页面和 MySQL 写入
+这个示例会生成：
+
+- `logs/bitlog_example.log`：普通文件 sink 输出。
+- `logs/bitlog_roll_*.log`：当前滚动日志文件。
+- `logs/bitlog_roll_*.log.gz`：已经滚动出去并压缩的旧日志。
+
+### 按大小、小时、日期滚动
+
+```bash
+cargo run --example rolling_demo
+```
+
+这个示例分别创建三种 rolling sink：
+
+- `SinkFactory::rolling("logs/bitlog_size_", 1024)`：按文件大小滚动。
+- `RollingPolicy::Time(TimeRollingPolicy::Hourly)`：按小时切分。
+- `RollingPolicy::Time(TimeRollingPolicy::Daily)`：按日期切分。
+
+运行后可以在 `logs/` 目录看到 `bitlog_size_*`、`bitlog_hour_*`、`bitlog_day_*` 日志文件。按小时和按日期策略只有跨过对应时间边界时才会继续切新文件；示例会先创建当前周期的日志文件。
+
+### panic 捕获和统计输出
+
+正常运行统计输出：
+
+```bash
+cargo run --example panic_stats_demo
+```
+
+触发一次受控 panic，查看 panic hook 输出：
+
+```powershell
+$env:BITLOG_TRIGGER_PANIC="1"; cargo run --example panic_stats_demo
+```
+
+panic hook 会输出 panic 文件位置、行号、payload，并打印 `GLOBAL_STATS` 的总数、各级别数量、QPS 和错误率。
+
+### 终端 TUI
+
+```bash
+cargo run --example tui_demo
+```
+
+这个示例会进入终端备用屏幕，绘制一次 BitLog TUI，展示当前 QPS 等运行指标，然后返回普通终端并打印统计报告。建议在真实终端中运行，不要在不支持 TUI 的输出面板里运行。
+
+### Web Dashboard、实时日志和动态级别
+
+```bash
 cargo run --example dashboard_demo
+```
 
-# 单独验证 MySQL 写入
+浏览器打开：
+
+```text
+http://127.0.0.1:8080/
+```
+
+Dashboard 会展示总日志数、QPS、错误率、各级别分布、异步批次数、实时日志列表。页面中还可以手动生成日志、筛选日志、搜索日志、暂停刷新、导出 JSON/TXT，并动态修改 logger 级别。
+
+如果 MySQL 可连接，Dashboard 还会展示 MySQL 历史日志；如果 MySQL 不可连接，实时日志功能仍然可用。
+
+### MySQL 结构化写入
+
+```bash
 cargo run --example mysql_demo
 ```
+
+这个示例会向 `bitlog.logs` 写入 5 条结构化日志。运行前需要先创建数据库和表，建表 SQL 见“输出到 MySQL”一节。
+
+### JSON formatter
+
+JSON formatter 在集成测试中会被自动验证：
+
+```bash
+cargo test json_formatter_outputs_structured_json_lines
+```
+
+也可以在业务代码里使用：
+
+```rust
+let logger = LoggerBuilder::new()
+    .name("json_logger")
+    .json_formatter()
+    .sink(SinkFactory::file("logs/app.jsonl"))
+    .build();
+```
+
+### 命名 logger、动态级别和最近日志查询
+
+这些功能由验收测试直接覆盖：
+
+```bash
+cargo test create_logger_registers_named_logger_for_later_lookup
+cargo test logger_level_can_be_changed_after_registration
+cargo test recent_log_store_keeps_structured_entries_for_dashboard
+```
+
+对应能力也可以在 Dashboard 页面里操作：修改 logger 级别后，再生成不同级别日志，实时日志列表会反映过滤结果。
 
 ## 测试流程
 

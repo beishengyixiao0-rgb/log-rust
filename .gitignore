@@ -3,5 +3,6 @@ Cargo.lock
 .idea
 .vscode
 *.log
-*.md
 *.gz
+/logs
+/.VSCodeCounter

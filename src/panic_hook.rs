@@ -17,6 +17,8 @@ pub fn install_panic_hook() {
 
         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
             eprintln!("panic payload: {}", s);
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            eprintln!("panic payload: {}", s);
         }
 
         GLOBAL_STATS.print_report();

@@ -8,7 +8,7 @@ use std::time::Duration;
 fn main() {
     println!("=== BitLog 文件输出示例 ===\n");
 
-    // 创建带文件输出目标的日志器（使用当前目录以兼容 Windows）
+    // 创建带文件输出目标的日志器
     let file_logger = LoggerBuilder::new()
         .name("file_logger")
         .level(LogLevel::Debug)
@@ -16,10 +16,10 @@ fn main() {
         .formatter(Formatter::new(Some(
             "[%d{%Y-%m-%d %H:%M:%S}][%p][%c] %m%n".to_string(),
         )))
-        .sink(SinkFactory::file("bitlog_example.log"))
+        .sink(SinkFactory::file("logs/bitlog_example.log"))
         .build();
 
-    LOG_INFO!(file_logger, "写入文件：bitlog_example.log");
+    LOG_INFO!(file_logger, "写入文件：logs/bitlog_example.log");
     LOG_WARN!(file_logger, "这是文件中的一条警告");
     LOG_ERROR!(file_logger, "这是文件中的一条错误");
 
@@ -28,7 +28,7 @@ fn main() {
         .name("rolling_logger")
         .level(LogLevel::Debug)
         .logger_type(LoggerType::Async)
-        .sink(SinkFactory::rolling("bitlog_roll_", 1024))
+        .sink(SinkFactory::rolling("logs/bitlog_roll_", 1024))
         .build();
 
     println!("正在写入 100 条日志到滚动文件...");
@@ -47,7 +47,7 @@ fn main() {
     thread::sleep(Duration::from_secs(2));
 
     println!("\n文件日志写入成功！");
-    println!("查看 bitlog_example.log 获取文件输出目标结果");
-    println!("查看 bitlog_roll_*.log 获取滚动输出目标结果");
+    println!("查看 logs/bitlog_example.log 获取文件输出目标结果");
+    println!("查看 logs/bitlog_roll_*.log 获取滚动输出目标结果");
     println!("\n=== 文件输出示例完成 ===");
 }

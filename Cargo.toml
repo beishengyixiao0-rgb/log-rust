@@ -37,6 +37,18 @@ name = "file_sink"
 path = "examples/file_sink.rs"
 
 [[example]]
+name = "rolling_demo"
+path = "examples/rolling_demo.rs"
+
+[[example]]
+name = "panic_stats_demo"
+path = "examples/panic_stats_demo.rs"
+
+[[example]]
+name = "tui_demo"
+path = "examples/tui_demo.rs"
+
+[[example]]
 name = "dashboard_demo"
 path = "examples/dashboard_demo.rs"
 

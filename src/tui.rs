@@ -2,10 +2,10 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crossterm::{
     execute,
-    terminal::{enable_raw_mode, EnterAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
-use std::io::stdout;
+use std::io::{stdout, Write};
 
 pub fn start_tui() {
     enable_raw_mode().unwrap();
@@ -29,4 +29,9 @@ pub fn start_tui() {
             f.render_widget(paragraph, size);
         })
         .unwrap();
+
+    disable_raw_mode().unwrap();
+    let stdout = terminal.backend_mut();
+    execute!(stdout, LeaveAlternateScreen).unwrap();
+    let _ = stdout.flush();
 }

@@ -228,6 +228,8 @@ pub struct RollSink {
     current_file: Arc<Mutex<Option<BufWriter<File>>>>,
     current_filename: Arc<Mutex<Option<String>>>,
     current_period: Arc<Mutex<Option<String>>>,
+    demo_periods: bool,
+    demo_period_counter: AtomicU64,
     sequence: AtomicU64,
 }
 
@@ -261,6 +263,8 @@ impl RollSink {
             current_file: Arc::new(Mutex::new(None)),
             current_filename: Arc::new(Mutex::new(None)),
             current_period: Arc::new(Mutex::new(None)),
+            demo_periods: std::env::var("BITLOG_DEMO_FORCE_PERIOD_SPLIT").is_ok(),
+            demo_period_counter: AtomicU64::new(0),
             sequence: AtomicU64::new(0),
         }
     }
@@ -278,6 +282,23 @@ impl RollSink {
     }
 
     fn current_period(&self) -> Option<String> {
+        if self.demo_periods {
+            let step = self.demo_period_counter.fetch_add(1, Ordering::Relaxed);
+            return match self.policy {
+                RollingPolicy::Time(TimeRollingPolicy::Hourly)
+                | RollingPolicy::SizeAndTime {
+                    time: TimeRollingPolicy::Hourly,
+                    ..
+                } => Some(format!("demo-hour-{}", step)),
+                RollingPolicy::Time(TimeRollingPolicy::Daily)
+                | RollingPolicy::SizeAndTime {
+                    time: TimeRollingPolicy::Daily,
+                    ..
+                } => Some(format!("demo-day-{}", step)),
+                RollingPolicy::Size(_) => None,
+            };
+        }
+
         let now = Local::now();
         match self.policy {
             RollingPolicy::Size(_) => None,
